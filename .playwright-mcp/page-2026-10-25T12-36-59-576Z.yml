@@ -1,0 +1,79 @@
+- generic [ref=f1e2]:
+  - button "שליחת בקשה לגישת עריכה" [ref=f1e4] [cursor=pointer]
+  - generic [ref=f1e13]:
+    - generic [ref=f1e16]:
+      - generic [ref=f1e18]:
+        - generic [ref=f1e20]:
+          - heading "קבוצת הטניס של צה\"ל-טופס הרשמה לאימון 23/10 יום שישי" [level=1] [ref=f1e22]
+          - generic [ref=f1e23]:
+            - text: אימוני טניס במועדון הטניס ברוקח 67 תל אביב עם המאמן עומר ארצי
+            - paragraph [ref=f1e24]: יום שישי 07:00-10:00 (נא למלא את הפרטים המלאים בכל סעיף)
+        - generic [ref=f1e27]:
+          - generic [ref=f1e28]:
+            - generic [ref=f1e30]:
+              - text: roey280404@gmail.com
+              - link "בחירה בחשבון אחר" [ref=f1e31] [cursor=pointer]:
+                - /url: https://accounts.google.com/AccountChooser?continue=https://docs.google.com/forms/d/1zNbDBNKUP0zPjwQB33R7wVl-8sXJxnTVW-dQ4R8NMeY/viewform?edit_requested%3Dtrue&service=wise
+            - generic [ref=f1e32]:
+              - img "כתובת האימייל וחשבון Google שלך לא יתועדו בתגובה" [ref=f1e33]
+              - generic [ref=f1e37]: לא בשיתוף
+          - generic [ref=f1e38] [cursor=pointer]
+      - list [ref=f1e41]:
+        - listitem [ref=f1e42]:
+          - generic [ref=f1e44]:
+            - heading "שם מלא" [level=3] [ref=f1e47]
+            - generic [ref=f1e53]:
+              - textbox "שם מלא" [ref=f1e54]
+              - generic [aria-hidden]: התשובה שלך
+        - listitem [ref=f1e56]:
+          - generic [ref=f1e58]:
+            - heading "כתובת דואר אלקטרוני" [level=3] [ref=f1e61]
+            - generic [ref=f1e67]:
+              - textbox "כתובת דואר אלקטרוני" [ref=f1e68]
+              - generic [aria-hidden]: התשובה שלך
+        - listitem [ref=f1e70]:
+          - generic [ref=f1e72]:
+            - heading "מספר טלפון נייד" [level=3] [ref=f1e75]
+            - generic [ref=f1e81]:
+              - textbox "מספר טלפון נייד" [ref=f1e82]
+              - generic [aria-hidden]: התשובה שלך
+        - listitem [ref=f1e84]:
+          - generic [ref=f1e86]:
+            - heading "יום שישי 23/10- נא לבחור את השעה הרלוונטית לאימון" [level=3] [ref=f1e89]
+            - radiogroup "יום שישי 23/10- נא לבחור את השעה הרלוונטית לאימון" [ref=f1e93]:
+              - generic [ref=f1e94]:
+                - generic [ref=f1e97]:
+                  - radio "שעה 7:00-רמה 3+4" [ref=f1e99] [cursor=pointer]
+                  - generic [ref=f1e102]: שעה 7:00-רמה 3+4
+                - generic [ref=f1e107]:
+                  - radio "שעה 8:00 רמה 5+6+7" [ref=f1e109] [cursor=pointer]
+                  - generic [ref=f1e112]: שעה 8:00 רמה 5+6+7
+                - generic [ref=f1e117]:
+                  - radio "שעה 9:00 רמה 1+2" [ref=f1e119] [cursor=pointer]
+                  - generic [ref=f1e122]: שעה 9:00 רמה 1+2
+      - generic [ref=f1e125]:
+        - generic [ref=f1e126]:
+          - button "שליחה" [ref=f1e128] [cursor=pointer]
+          - button "ניקוי הטופס" [ref=f1e133] [cursor=pointer]
+        - generic [ref=f1e137]: אין לשלוח סיסמאות באמצעות Google Forms.
+    - generic [ref=f1e138]:
+      - generic [ref=f1e139]:
+        - text: תוכן זה לא נוצר ולא נתמך על ידי Google. -
+        - button "יצירת קשר עם הבעלים של הטופס" [ref=f1e140]
+        - text: "-"
+        - link "תנאים והגבלות" [ref=f1e141] [cursor=pointer]:
+          - /url: https://policies.google.com/terms
+        - text: "-"
+        - link "למדיניות הפרטיות" [ref=f1e142] [cursor=pointer]:
+          - /url: https://policies.google.com/privacy
+        - paragraph [ref=f1e143]:
+          - text: הטופס נראה לך חשוד?
+          - link "דיווח" [ref=f1e144] [cursor=pointer]:
+            - /url: https://docs.google.com/forms/u/0/d/1zNbDBNKUP0zPjwQB33R7wVl-8sXJxnTVW-dQ4R8NMeY/abuse
+      - link [ref=f1e146] [cursor=pointer]:
+        - /url: //www.google.com/forms/about/?utm_source=product&utm_medium=forms_logo&utm_campaign=forms
+        - img "Google" [ref=f1e147]
+        - text: Forms
+  - generic [ref=f1e151]:
+    - button "עזרה ומשוב" [ref=f1e152] [cursor=pointer]
+    - tooltip [aria-hidden] [ref=f1e155]: עזרה ומשוב
