@@ -38,12 +38,12 @@ class NotificationTests(unittest.TestCase):
             main.notify("Test", "Test")
 
     def test_ai_error_reaches_workflow(self):
-        with patch.object(main, "OpenAI", side_effect=RuntimeError("API unavailable")):
+        with patch("openai.OpenAI", side_effect=RuntimeError("API unavailable")):
             with self.assertRaises(RuntimeError):
                 main.ai_answer("Test question")
 
     def test_empty_ai_answer_fails_without_retrying_forever(self):
-        with patch.object(main, "OpenAI") as client:
+        with patch("openai.OpenAI") as client:
             create = client.return_value.chat.completions.create
             create.return_value.choices = [Mock(message=Mock(content=""))]
             with self.assertRaisesRegex(ValueError, "empty answer"):

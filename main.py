@@ -3,7 +3,6 @@ import os
 import subprocess
 import sys
 from pathlib import Path
-from openai import OpenAI
 import json
 import re
 import time
@@ -150,6 +149,8 @@ def get_questions_from_form(form_url: str) -> dict[str, str]:
 
 # @retry(tries=3, delay=1, backoff=2)
 def ai_answer(question: str) -> str:
+    from openai import OpenAI  # deferred: heavy import, only needed here
+
     while True:
         try:
             client = OpenAI(
