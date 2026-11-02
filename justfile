@@ -1,22 +1,26 @@
 default:
   @just --list
 
-[group('uv')]
+[group('node')]
+install:
+  npm ci
+
+[group('node')]
 run:
-  uv run main.py
+  node index.js
 
-[group('uv')]
-dep-tree:
-  uv tree
+[group('node')]
+test:
+  npm test
 
+# pair WhatsApp (QR file at ~/whatsapp-qr.html) and print your groups and their IDs
+[group('node')]
+list-groups:
+  node index.js --list-groups
 
 [group('nix')]
 update-dependencies:
   nix flake update
-
-[group('nix')]
-dev-shell:
-  nix develop .#default
 
 [group('nix')]
 run-nix:

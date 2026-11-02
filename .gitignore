@@ -330,3 +330,10 @@ pyrightconfig.json
 pyvenv.cfg
 pip-selfcheck.json
 
+
+# Node
+node_modules/
+
+# local runtime artifacts
+hello.txt
+.playwright-mcp/

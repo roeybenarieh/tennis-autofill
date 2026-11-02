@@ -1,0 +1,21 @@
+{
+  "name": "tennis-autofill",
+  "version": "0.2.0",
+  "description": "Watches a WhatsApp group for a Google Form link, fills it and submits it.",
+  "main": "index.js",
+  "bin": { "tennis-autofill": "index.js" },
+  "scripts": {
+    "start": "node index.js",
+    "test": "node --test"
+  },
+  "license": "ISC",
+  "type": "commonjs",
+  "engines": { "node": ">=22.13" },
+  "dependencies": {
+    "@whiskeysockets/baileys": "^6.7.24",
+    "baileys-antiban": "4.10.0",
+    "baileys-keep-alive": "0.1.0",
+    "pino": "^10.4.0",
+    "qrcode": "1.5.4"
+  }
+}
