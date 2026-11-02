@@ -4,6 +4,23 @@ Watches a WhatsApp group for a Google Form link, fills the form (personal detail
 
 **Warning:** running it listens to a live chat and submits real forms. Only run it when you want the form sent. Use `LINKS_ONLY=1` or `DRY_RUN=1` to test.
 
+## Installing as a systemd service: order of actions
+
+Do these in order. Steps 1 to 5 are one-time manual setup; the service must not run until they are done (two processes on one WhatsApp login kick each other out). Details for each step are in the sections below.
+
+1. **Log in to Google in Chromium** as the user the service will run as. Form reading and submitting reuse that profile's cookies.
+2. **Create the env file** `~/.config/tennis-autofiller/env` (that user's home, `chmod 600`) with `OPENROUTER_API_KEY=...`. You cannot set `WATCH_CHAT_ID` yet; you get it in step 4.
+3. **Create the state directory**, owned by that user: `sudo mkdir -p /var/lib/tennis-autofill && sudo chown <user> /var/lib/tennis-autofill`. It will hold the WhatsApp login (`auth/`) and the link cache.
+4. **Pair WhatsApp and find the group ID**, as that user, using the same state directory the service will use:
+   `STATE_DIR=/var/lib/tennis-autofill nix run github:roeybenarieh/tennis-autofill -- --list-groups`
+   Open the QR page it prints (`~/whatsapp-qr.html`), scan it under WhatsApp > Linked devices > Link a device, then copy the `id` of your group from the printed list into the env file as `WATCH_CHAT_ID=<id>@g.us`.
+5. **Test without submitting**, still with the same `STATE_DIR`: first `LINKS_ONLY=1`, then `DRY_RUN=1` (see [Running](#running)). Use a group only you are in and a disposable form. Stop the test (Ctrl+C) before step 7.
+6. **Add the flake and define the service** in your NixOS configuration, using the example under [Running as a service](#running-as-a-service). Set `User` to the same user, and `STATE_DIR` to the directory from step 3.
+7. **Rebuild and start**: `sudo nixos-rebuild switch --flake .#<hostname>`. The unit starts on boot (`wantedBy = multi-user.target`). From now on it **submits forms**.
+8. **Verify**: `systemctl status tennis-autofill` and `journalctl -u tennis-autofill -f` should show `Connected; watching <group>`. Stop it any time with `systemctl stop tennis-autofill`.
+
+If the service logs `Disconnected (401)` or exits after being logged out or replaced, delete `<STATE_DIR>/auth` and repeat step 4.
+
 ## How it works
 
 1. [Baileys](https://github.com/WhiskeySockets/Baileys) (unofficial WhatsApp Web client, linked as a device) receives messages from `WATCH_CHAT_ID`, including your own. [baileys-keep-alive](https://github.com/kobie3717/baileys-keep-alive) owns reconnecting; [baileys-antiban](https://github.com/kobie3717/baileys-antiban) supplies reconnect delay advice (Baileys' own codes win where they disagree).
@@ -11,7 +28,7 @@ Watches a WhatsApp group for a Google Form link, fills the form (personal detail
 3. The form is read with your Chromium login cookies, answers are generated (name, email, phone and time slot are hardcoded in `forms.js`; anything else goes to OpenRouter in Hebrew, one short clause), and the form is submitted. A submission counts only if Google's confirmation message appears.
 4. If reading, answering or submitting fails, it notifies you, opens the form in your browser (`xdg-open`) and keeps watching. An unconfirmed submission is never retried automatically: check whether Google recorded it first.
 
-**Risks.** Baileys reverse-engineers WhatsApp Web; WhatsApp's Terms of Service do not allow it, and the number can be restricted or banned (the whole number, including the phone app). Prefer a secondary number. The watcher is passive: it sends no messages, typing indicators, read receipts or presence updates. `baileys-antiban` cannot guarantee against bans. WhatsApp controls initial history delivery, so a full 40-hour backfill is not guaranteed; keep it running for continuous coverage.
+**Risks.** Baileys reverse-engineers WhatsApp Web; WhatsApp's Terms of Service do not allow it, and the number can be restricted or banned (the whole number, including the phone app). Prefer a secondary number. The watcher is passive: it sends no messages, typing indicators or read receipts. The only thing Baileys itself sends beyond the protocol handshake and keepalives is a single "unavailable" presence update on each connect (the account is not shown as online). `baileys-antiban` cannot guarantee against bans. WhatsApp controls initial history delivery, so a full 40-hour backfill is not guaranteed; keep it running for continuous coverage.
 
 ## Requirements
 

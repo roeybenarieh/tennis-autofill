@@ -5,7 +5,7 @@
   "main": "index.js",
   "bin": { "tennis-autofill": "index.js" },
   "scripts": {
-    "start": "node index.js",
+    "start": "node --max-semi-space-size=1 --optimize-for-size index.js",
     "test": "node --test"
   },
   "license": "ISC",

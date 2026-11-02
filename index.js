@@ -91,8 +91,11 @@ async function main(argv = process.argv.slice(2)) {
     process.exitCode = 1;
   };
 
+  const onQrUnscanned = ({ qrFile }) =>
+    notify("WhatsApp login needed", `The QR code has not been scanned. Open ${qrFile} in a browser and scan it.`);
+
   if (argv.includes("--list-groups")) {
-    return whatsapp.listGroups({ ...cfg, onFatal, print: (line) => process.stdout.write(line + "\n") });
+    return whatsapp.listGroups({ ...cfg, onFatal, onQrUnscanned, print: (line) => process.stdout.write(line + "\n") });
   }
   const missing = ["WATCH_CHAT_ID", ...(cfg.linksOnly ? [] : ["OPENROUTER_API_KEY"])].filter((name) => !process.env[name]);
   if (missing.length) {
@@ -115,7 +118,7 @@ async function main(argv = process.argv.slice(2)) {
   const seen = new Set();
   let queue = Promise.resolve(); // one form at a time, in arrival order
   const session = await whatsapp.watch({
-    ...cfg, onFatal, log,
+    ...cfg, onFatal, onQrUnscanned, log,
     onForm: ({ link }) => {
       if (seen.has(link)) return;
       seen.add(link);

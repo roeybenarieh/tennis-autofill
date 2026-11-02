@@ -7,19 +7,43 @@ const { default: makeWASocket, DisconnectReason, useMultiFileAuthState,
 const { classifyDisconnect } = require("baileys-antiban");
 const { keepAlive } = require("baileys-keep-alive");
 const pino = require("pino");
-const QRCode = require("qrcode");
 
 const WINDOW_MS = 40 * 3600 * 1000;
 
 // The QR is a login credential: private file, replaced atomically, refreshed by the page.
 async function writeQrHtml(file, qr) {
-  const image = await QRCode.toDataURL(qr, { width: 360, margin: 2 });
+  // loaded on demand: only needed while pairing, saves memory in the long-running service
+  const image = await require("qrcode").toDataURL(qr, { width: 360, margin: 2 });
   const html = `<!doctype html><meta charset="utf-8"><meta http-equiv="refresh" content="5">
 <title>WhatsApp link</title><body style="font-family:sans-serif;text-align:center">
 <h2>WhatsApp &gt; Linked devices &gt; Link a device</h2><img src="${image}" alt="QR code">
 <p>This page refreshes itself; the code rotates every ~20 s.</p>`;
   fs.writeFileSync(`${file}.tmp`, html, { mode: 0o600 });
   fs.renameSync(`${file}.tmp`, file);
+}
+
+// Reminds (via notify(waitedMs)) while a QR is shown but not scanned: after `afterMs`, then every
+// `repeatMs`. The QR rotates every ~20 s, so the clock starts at the first one, not the latest.
+function makeQrReminder({ afterMs, repeatMs, notify }) {
+  let timer;
+  let since;
+  const schedule = (delay) => {
+    timer = setTimeout(() => {
+      notify(Date.now() - since);
+      schedule(repeatMs);
+    }, delay);
+  };
+  return {
+    shown() {
+      if (timer) return;
+      since = Date.now();
+      schedule(afterMs);
+    },
+    done() {
+      clearTimeout(timer);
+      timer = undefined;
+    },
+  };
 }
 
 function findFormLink(text) {
@@ -84,7 +108,8 @@ function loadCache(dataDir, now = Date.now()) {
 
 // Connects (pairing via the QR file if needed) and keeps the connection alive. keepAlive owns
 // reconnecting; fatal disconnects (logged out, replaced) call onFatal once. Returns { stop }.
-async function startSocket({ dataDir, qrFile, onOpen, onMessages, onFatal, log = console.error }) {
+async function startSocket({ dataDir, qrFile, onOpen, onMessages, onFatal, onQrUnscanned, log = console.error,
+  qrRemindAfterMs = 60_000, qrRemindEveryMs = 600_000 }) {
   fs.mkdirSync(dataDir, { recursive: true, mode: 0o700 });
   const { state, saveCreds } = await useMultiFileAuthState(path.join(dataDir, "auth"));
   const logger = pino({ level: "warn" }, pino.destination(2));
@@ -93,9 +118,18 @@ async function startSocket({ dataDir, qrFile, onOpen, onMessages, onFatal, log =
   let socket;
   let keeper;
   let stopping = false;
+  const qrReminder = makeQrReminder({
+    afterMs: qrRemindAfterMs,
+    repeatMs: qrRemindEveryMs,
+    notify: (waitedMs) => {
+      log(`QR still unscanned after ${Math.round(waitedMs / 1000)}s: ${qrFile}`);
+      onQrUnscanned?.({ qrFile, waitedMs });
+    },
+  });
 
   function stop() {
     stopping = true;
+    qrReminder.done();
     keeper?.stop();
     socket?.end(undefined);
     fs.rmSync(qrFile, { force: true });
@@ -107,7 +141,9 @@ async function startSocket({ dataDir, qrFile, onOpen, onMessages, onFatal, log =
   }
 
   function connect() {
-    socket = makeWASocket({ auth: state, logger, markOnlineOnConnect: false });
+    // fireInitQueries off: the props/blocklist/privacy queries are not needed to receive messages
+    // and the props one times out ("unexpected error in 'init queries'").
+    socket = makeWASocket({ auth: state, logger, markOnlineOnConnect: false, fireInitQueries: false });
     socket.ev.on("creds.update", () => saveCreds().catch(fail));
     socket.ev.on("messages.upsert", ({ messages }) => onMessages?.(messages));
     socket.ev.on("messaging-history.set", ({ messages }) => onMessages?.(messages));
@@ -116,9 +152,11 @@ async function startSocket({ dataDir, qrFile, onOpen, onMessages, onFatal, log =
         if (qr) {
           await writeQrHtml(qrFile, qr);
           log(`Open this file in a browser and scan it: ${qrFile}`);
+          qrReminder.shown();
         }
         if (connection === "open") {
           attempts = 0;
+          qrReminder.done();
           fs.rmSync(qrFile, { force: true });
           await onOpen?.(socket);
         }
@@ -142,8 +180,9 @@ async function startSocket({ dataDir, qrFile, onOpen, onMessages, onFatal, log =
   keeper = keepAlive(connect(), {
     reconnect: { initialDelayMs: 0, jitterMs: 0 },
     heartbeat: { enabled: false },
+    qr: { staleAfterMs: 2_147_483_647 }, // effectively off: makeQrReminder does this job
+
     logger: { info() {}, warn: log, error: log },
-    onQRStale: (ms) => log(`QR unscanned for ${Math.round(ms / 1000)}s.`),
     reconnectFactory: async () => {
       if (stopping) throw new Error("stopped");
       const delay = reconnectDelay(lastCode, attempts++);
@@ -158,7 +197,7 @@ async function startSocket({ dataDir, qrFile, onOpen, onMessages, onFatal, log =
 
 // Watches `group`. Links sent before startup are cached only; onForm(entry) fires for new ones,
 // including your own messages. Messages during a reconnect are caught by history sync.
-async function watch({ dataDir, qrFile, group, onForm, onFatal, log = console.error }) {
+async function watch({ dataDir, qrFile, group, onForm, onFatal, onQrUnscanned, log = console.error }) {
   const cacheFile = path.join(dataDir, "forms.json");
   const entries = loadCache(dataDir);
   const startedAt = Math.floor(Date.now() / 1000) * 1000;
@@ -171,16 +210,16 @@ async function watch({ dataDir, qrFile, group, onForm, onFatal, log = console.er
     for (const entry of added) if (entry.sentAt >= startedAt) onForm(entry);
   }
   return startSocket({
-    dataDir, qrFile, onFatal, log, onMessages: receive,
+    dataDir, qrFile, onFatal, onQrUnscanned, log, onMessages: receive,
     onOpen: () => log(`Connected; watching ${group}. Pre-start links are only cached.`),
   });
 }
 
 // Prints id, name and member count of every group this account is in, then disconnects.
-async function listGroups({ dataDir, qrFile, onFatal, print = console.log }) {
+async function listGroups({ dataDir, qrFile, onFatal, onQrUnscanned, print = console.log }) {
   let session;
   session = await startSocket({
-    dataDir, qrFile, onFatal,
+    dataDir, qrFile, onFatal, onQrUnscanned,
     onOpen: async (socket) => {
       for (const item of Object.values(await socket.groupFetchAllParticipating())) {
         print(JSON.stringify({ id: item.id, name: item.subject, participants: item.participants.length }));
@@ -190,4 +229,4 @@ async function listGroups({ dataDir, qrFile, onFatal, print = console.log }) {
   });
 }
 
-module.exports = { findFormLink, formEntry, recordMessages, reconnectDelay, loadCache, watch, listGroups };
+module.exports = { makeQrReminder, findFormLink, formEntry, recordMessages, reconnectDelay, loadCache, watch, listGroups };

@@ -1,7 +1,7 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const { DisconnectReason } = require("@whiskeysockets/baileys");
-const { formEntry, recordMessages, reconnectDelay, findFormLink } = require("./whatsapp");
+const { formEntry, recordMessages, reconnectDelay, findFormLink, makeQrReminder } = require("./whatsapp");
 
 test("solo-group links, wrapped messages, history filtering and deduplication", () => {
   const group = "123@g.us";
@@ -38,4 +38,26 @@ test("pairing restart and transient close override antiban classifications", () 
   assert.equal(reconnectDelay(DisconnectReason.connectionReplaced, 0), null);
   assert.equal(reconnectDelay(429, 0), 300000);
   assert.equal(reconnectDelay(408, 100), 600000);
+});
+
+test("QR reminder: first after the delay, then repeating, never restarted by QR rotation, stopped when linked", (t) => {
+  t.mock.timers.enable({ apis: ["setTimeout", "Date"] });
+  const waited = [];
+  const reminder = makeQrReminder({ afterMs: 60_000, repeatMs: 600_000, notify: (ms) => waited.push(ms) });
+  reminder.shown();
+  t.mock.timers.tick(30_000);
+  reminder.shown(); // the QR rotated: must not push the reminder back
+  t.mock.timers.tick(29_999);
+  assert.deepEqual(waited, []);
+  t.mock.timers.tick(1);
+  assert.deepEqual(waited, [60_000]);
+  t.mock.timers.tick(600_000);
+  assert.deepEqual(waited, [60_000, 660_000]);
+  reminder.done(); // linked
+  t.mock.timers.tick(3_600_000);
+  assert.equal(waited.length, 2);
+  reminder.shown(); // a later unpaired reconnect starts a fresh clock
+  t.mock.timers.tick(60_000);
+  assert.deepEqual(waited.slice(2), [60_000]);
+  reminder.done();
 });

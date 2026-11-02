@@ -10,7 +10,7 @@ Node.js tool that watches a WhatsApp group for a Google Form link, auto-fills th
 - Tasks: `just --list`
 
 ## Flow
-1. `whatsapp.js` `watch()` receives group messages (live + history sync), caches form links for 40 h in `STATE_DIR/forms.json`, and calls `onForm` for links sent after startup. It is passive: it never sends anything.
+1. `whatsapp.js` `watch()` receives group messages (live + history sync), caches form links for 40 h in `STATE_DIR/forms.json`, and calls `onForm` for links sent after startup. It is passive: it never sends chat messages, typing or read receipts (Baileys itself sends one "unavailable" presence on connect).
 2. `index.js` `processForm()` runs one form at a time: `forms.getQuestions()` (scrapes `jsmodel="CP1oW"` blocks into `entry.<id>` -> question), `forms.answerQuestions()` (hardcoded name/email/phone/time slot, otherwise `aiAnswer()`, Hebrew, one short clause), `forms.submitForm()` (POST to `/formResponse`, success only if Google's confirmation message appears). On failure it notifies and opens the form via `xdg-open`.
 3. `cookies.js` reads Google cookies from the Chromium profile (v10 encryption only).
 
