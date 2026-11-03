@@ -36,6 +36,7 @@ test("pairing restart and transient close override antiban classifications", () 
   assert.equal(reconnectDelay(DisconnectReason.connectionClosed, 0), 10000);
   assert.equal(reconnectDelay(DisconnectReason.loggedOut, 0), null);
   assert.equal(reconnectDelay(DisconnectReason.connectionReplaced, 0), null);
+  assert.equal(reconnectDelay(DisconnectReason.badSession, 0), 10000); // Baileys' fallback for unknown stream errors
   assert.equal(reconnectDelay(429, 0), 300000);
   assert.equal(reconnectDelay(408, 100), 600000);
 });

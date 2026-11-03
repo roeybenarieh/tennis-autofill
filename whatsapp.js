@@ -73,8 +73,9 @@ function formEntry(msg, group, now = Date.now()) {
 function reconnectDelay(code, attempts) {
   // Baileys' own codes take precedence: antiban 4.10 misclassifies 515 and 428.
   if (code === DisconnectReason.restartRequired) return 1000;
+  // 500 (badSession) is also Baileys' fallback for unknown stream errors: recoverable, so reconnect.
   if ([DisconnectReason.loggedOut, DisconnectReason.connectionReplaced,
-    DisconnectReason.badSession, DisconnectReason.multideviceMismatch, 403, 405, 409].includes(code)) return null;
+    DisconnectReason.multideviceMismatch, 403, 405, 409].includes(code)) return null;
   return Math.max(classifyDisconnect(code).backoffMs || 0,
     Math.min(10_000 * 2 ** Math.min(attempts, 6), 600_000));
 }
