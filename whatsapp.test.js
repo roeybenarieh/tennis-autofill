@@ -1,7 +1,7 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const { DisconnectReason } = require("@whiskeysockets/baileys");
-const { formEntry, recordMessages, reconnectDelay, findFormLink, makeQrReminder } = require("./whatsapp");
+const { formEntry, recordMessages, reconnectDelay, findFormLink, makeQrReminder, isKnownNoise } = require("./whatsapp");
 
 test("solo-group links, wrapped messages, history filtering and deduplication", () => {
   const group = "123@g.us";
@@ -39,6 +39,15 @@ test("pairing restart and transient close override antiban classifications", () 
   assert.equal(reconnectDelay(DisconnectReason.badSession, 0), 10000); // Baileys' fallback for unknown stream errors
   assert.equal(reconnectDelay(429, 0), 300000);
   assert.equal(reconnectDelay(408, 100), 600000);
+});
+
+test("only the known harmless Baileys logs are dropped", () => {
+  const counter = { err: { name: "MessageCounterError" }, key: { remoteJid: "1@lid" } };
+  assert.equal(isKnownNoise([counter, "failed to decrypt message"]), true);
+  assert.equal(isKnownNoise([{ ...counter, key: { remoteJid: "1@g.us" } }, "failed to decrypt message"]), false);
+  assert.equal(isKnownNoise([{ err: { name: "Error" }, key: { remoteJid: "1@lid" } }, "failed to decrypt message"]), false);
+  assert.equal(isKnownNoise([{ node: {} }, "Invalid mex newsletter notification"]), true);
+  assert.equal(isKnownNoise([{}, "Disconnected"]), false);
 });
 
 test("QR reminder: first after the delay, then repeating, never restarted by QR rotation, stopped when linked", (t) => {

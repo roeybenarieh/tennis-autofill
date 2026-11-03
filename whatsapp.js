@@ -10,6 +10,16 @@ const pino = require("pino");
 
 const WINDOW_MS = 40 * 3600 * 1000;
 
+// Known harmless Baileys logs, dropped before they reach stderr. Anything else still logs.
+// - direct-chat messages we can't decrypt (session counter out of sync; never the watched group)
+// - contact status updates Baileys misroutes to its newsletter handler
+function isKnownNoise(args) {
+  const [obj, msg] = args;
+  if (msg === "failed to decrypt message" && obj?.err?.name === "MessageCounterError"
+    && !String(obj.key?.remoteJid).endsWith("@g.us")) return true;
+  return msg === "Invalid mex newsletter notification";
+}
+
 // The QR is a login credential: private file, replaced atomically, refreshed by the page.
 async function writeQrHtml(file, qr) {
   // loaded on demand: only needed while pairing, saves memory in the long-running service
@@ -113,7 +123,8 @@ async function startSocket({ dataDir, qrFile, onOpen, onMessages, onFatal, onQrU
   qrRemindAfterMs = 60_000, qrRemindEveryMs = 600_000 }) {
   fs.mkdirSync(dataDir, { recursive: true, mode: 0o700 });
   const { state, saveCreds } = await useMultiFileAuthState(path.join(dataDir, "auth"));
-  const logger = pino({ level: "warn" }, pino.destination(2));
+  const logger = pino({ level: "warn", hooks: { logMethod(args, method) { if (!isKnownNoise(args)) method.apply(this, args); } } },
+    pino.destination(2));
   let attempts = 0;
   let lastCode;
   let socket;
@@ -230,4 +241,4 @@ async function listGroups({ dataDir, qrFile, onFatal, onQrUnscanned, print = con
   });
 }
 
-module.exports = { makeQrReminder, findFormLink, formEntry, recordMessages, reconnectDelay, loadCache, watch, listGroups };
+module.exports = { makeQrReminder, findFormLink, formEntry, recordMessages, reconnectDelay, loadCache, isKnownNoise, watch, listGroups };
